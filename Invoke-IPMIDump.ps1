@@ -1,3 +1,4 @@
+
 function Get-SubnetAddresses {
     Param (
         [IPAddress]$IP,
@@ -253,8 +254,7 @@ function Invoke-IPMIDump {
         $searcher.PageSize = 1000
         if ($IncludeDisabled) {
             $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(SamAccountName=*))"
-        }
-        else {
+        } else {
             $searcher.Filter = "(&(objectCategory=user)(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=2)(SamAccountName=*))"
         }
         $searcher.PropertiesToLoad.AddRange(@("samAccountName"))
@@ -267,8 +267,7 @@ function Invoke-IPMIDump {
                     $samAccountName
                 }
             }
-        }
-        catch {
+        } catch {
             Write-Error "Failed to query Active Directory: $_"
             return $null
         }
@@ -283,8 +282,7 @@ function Invoke-IPMIDump {
         $IP = $IP.Split("/")[0]
         $ips = Get-SubnetAddresses -MaskBits $mb -IP $IP
         $ipAddresses = Get-IPRange -Lower $ips[0] -Upper $ips[1]
-    }
-    else {
+    } else {
         $ipAddresses = @($IP)
     }
 
@@ -304,8 +302,7 @@ function Invoke-IPMIDump {
                     break
                 }
             }
-        }
-        elseif ($Users -eq "Domain Users") {
+        } elseif ($Users -eq "Domain Users") {
             foreach ($user in $IPMIUsers) {
                 if ($global:IPMI_halt) { break }
                 $res = Attempt-Retrieve -User $user -Port $Port -IP $ip
@@ -313,8 +310,7 @@ function Invoke-IPMIDump {
                     break
                 }
             }
-        }
-        else {
+        } else {
             if ([System.IO.File]::Exists($Users)) {
                 Get-Content $Users | ForEach-Object {
                     Start-Sleep -Milliseconds 100
@@ -323,8 +319,7 @@ function Invoke-IPMIDump {
                         break
                     }
                 }
-            }
-            else {
+            } else {
                 Attempt-Retrieve -User $Users -Port $Port -IP $ip
             }
         }
